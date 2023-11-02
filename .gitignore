@@ -1,8 +1,9 @@
 *
-!**/*.c
-!**/*.h
-!**/*.cpp
-!**/*.hcc
+!**/
+!*.c
+!*.h
+!*.cpp
+!*.hcc
 !LICENSE
 !README*
 
