@@ -79,10 +79,13 @@ Example:
    Do not parallelize this function. */
 int fib_rec(int n)
 {
-    if (n<2) {
+    if (n < 2)
+    {
         return 1;
-    } else {
-        return fib_rec(n-1) + fib_rec(n-2);
+    }
+    else
+    {
+        return fib_rec(n - 1) + fib_rec(n - 2);
     }
 }
 
@@ -90,19 +93,23 @@ int fib_rec(int n)
    must be used for checking the result only. */
 int fib_iter(int n)
 {
-    if (n<2) {
+    if (n < 2)
+    {
         return 1;
-    } else {
+    }
+    else
+    {
         int fibnm1 = 1;
         int fibnm2 = 1;
         int fibn;
-        n = n-1;
-        do {
+        n = n - 1;
+        do
+        {
             fibn = fibnm1 + fibnm2;
             fibnm2 = fibnm1;
             fibnm1 = fibn;
             n--;
-        } while (n>0);
+        } while (n > 0);
         return fibn;
     }
 }
@@ -113,8 +120,9 @@ void fill(int *vin, int *vout, int n)
 {
     int i;
     /* fill input array */
-    for (i=0; i<n; i++) {
-        vin[i] = 25 + (i%10);
+    for (i = 0; i < n; i++)
+    {
+        vin[i] = 25 + (i % 10);
         vout[i] = -1;
     }
 }
@@ -124,8 +132,10 @@ int is_correct(const int *vin, const int *vout, int n)
 {
     int i;
     /* check result */
-    for (i=0; i<n; i++) {
-        if ( vout[i] != fib_iter(vin[i]) ) {
+    for (i = 0; i < n; i++)
+    {
+        if (vout[i] != fib_iter(vin[i]))
+        {
             fprintf(stderr,
                     "Test FAILED: vin[%d]=%d, vout[%d]=%d (expected %d)\n",
                     i, vin[i], i, vout[i], fib_iter(vin[i]));
@@ -135,7 +145,6 @@ int is_correct(const int *vin, const int *vout, int n)
     fprintf(stderr, "Test OK\n");
     return 1;
 }
-
 
 void do_static(const int *vin, int *vout, int n)
 {
@@ -176,15 +185,29 @@ void do_static(const int *vin, int *vout, int n)
        number of threads, and therefore we must use addtional checks
        to ensure that we never exceed `n`.
     */
-    for (i=0; i<n; i++) {
-        vout[i] = fib_rec(vin[i]);
-        /* printf("vin[%d]=%d vout[%d]=%d\n", i, vin[i], i, vout[i]); */
+    const int chunk_size = 1;
+#pragma omp parallel default(none) shared(vin, vout, n, chunk_size) private(i)
+    {
+        const int my_id = omp_get_thread_num();
+        const int MAX_THR = omp_get_num_threads();
+        int START = my_id * chunk_size;
+        int STRIDE = MAX_THR * chunk_size;
+        for (i = START; i < n; i += STRIDE)
+        {
+            for (int j = i; j < i + chunk_size && j < n; j++)
+            {
+                vout[j] = fib_rec(vin[j]);
+                // printf("THR[%d] vin[%d]=%d vout[%d]=%d\n", my_id, j, vin[j], j, vout[j]);
+            }
+        }
     }
 }
 
 void do_dynamic(const int *vin, int *vout, int n)
 {
     int i;
+    int idx = 0;
+    const int chunk_size = 1;
     /* [TODO] parallelize the following loop, simulating a
        "schedule(dynamic,1)" clause, i.e., dynamic scheduling with
        block size 1. Optionally, allow the user to specify the chunk
@@ -207,36 +230,55 @@ void do_dynamic(const int *vin, int *vout, int n)
          }
        } while (my_idx < n);
     */
-    for (i=0; i<n; i++) {
-        vout[i] = fib_rec(vin[i]);
-        /* printf("vin[%d]=%d vout[%d]=%d\n", i, vin[i], i, vout[i]); */
+#pragma omp parallel default(none) shared(vin, vout, n, idx, chunk_size) private(i)
+    {
+        int my_idx;
+        const int tid = omp_get_thread_num();
+        do
+        {
+#pragma omp critical
+            {
+                my_idx = idx;
+                idx += chunk_size;
+            }
+            for (i = my_idx; i < my_idx + chunk_size && i < n; i++)
+            {
+                vout[i] = fib_rec(vin[i]);
+                // printf("THR[%d]: vin[%d]=%d vout[%d]=%d\n", tid, i, vin[i], i, vout[i]);
+            }
+        } while (my_idx < n);
     }
 }
 
-int main( int argc, char* argv[] )
+int main(int argc, char *argv[])
 {
     int n = 1024;
-    const int max_n = 512*1024*1024;
+    const int max_n = 512 * 1024 * 1024;
     int *vin, *vout;
     double tstart, elapsed;
 
-    if ( argc > 2 ) {
+    if (argc > 2)
+    {
         fprintf(stderr, "Usage: %s [n]\n", argv[0]);
         return EXIT_FAILURE;
     }
 
-    if ( argc > 1 ) {
+    if (argc > 1)
+    {
         n = atoi(argv[1]);
     }
 
-    if ( n > max_n ) {
+    if (n > max_n)
+    {
         fprintf(stderr, "FATAL: n too large (max value is %d)\n", max_n);
         return EXIT_FAILURE;
     }
 
     /* initialize the input and output arrays */
-    vin = (int*)malloc(n * sizeof(vin[0])); assert(vin != NULL);
-    vout = (int*)malloc(n * sizeof(vout[0])); assert(vout != NULL);
+    vin = (int *)malloc(n * sizeof(vin[0]));
+    assert(vin != NULL);
+    vout = (int *)malloc(n * sizeof(vout[0]));
+    assert(vout != NULL);
 
     /**
      ** Test static schedule implementation
