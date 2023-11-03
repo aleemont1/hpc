@@ -4,6 +4,7 @@
 !*.h
 !*.cpp
 !*.hcc
+!*.in
 !LICENSE
 !README*
 
