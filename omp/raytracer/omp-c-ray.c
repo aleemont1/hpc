@@ -135,69 +135,76 @@ parameters; to see the complete list, use
 #define M_PI 3.14159265358979323846
 #endif
 
-typedef struct {
+typedef struct
+{
     double x, y, z;
-} vec3_t;
+} vec3_t; /* Represents a 3D vector */
 
-typedef struct {
+typedef struct
+{
     vec3_t orig, dir;
-} ray_t;
+} ray_t; /* Represents a 3D ray (origin and direction) */
 
-typedef struct {
-    vec3_t col;         /* color */
-    double spow;	/* specular power */
-    double refl;	/* reflection intensity */
-} material_t;
+typedef struct
+{
+    vec3_t col;  /* color */
+    double spow; /* specular power */
+    double refl; /* reflection intensity */
+} material_t;    /* Represents the material based on color, reflection capacity and reflection intensity */
 
-typedef struct sphere {
+typedef struct sphere
+{
     vec3_t pos;
     double rad;
     material_t mat;
     struct sphere *next;
-} sphere_t;
+} sphere_t; /* Represents a sphere */
 
-typedef struct {
-    vec3_t pos, normal, vref;	/* position, normal and view reflection */
-    double dist;		/* parametric distance of intersection along the ray */
-} spoint_t;
+typedef struct
+{
+    vec3_t pos, normal, vref; /* position, normal and view reflection */
+    double dist;              /* parametric distance of intersection along the ray */
+} spoint_t;                   /* MAYBE Represents the point of impact of the ray(????) */
 
-typedef struct {
+typedef struct
+{
     vec3_t pos, targ;
-    double half_fov_rad;        /* half field of view in radiants */
-} camera_t;
+    double half_fov_rad; /* half field of view in radiants */
+} camera_t;              /* Observer */
 
 /* The __attribute__(( ... )) definition is gcc-specific, and tells
    the compiler that the fields of this structure should not be padded
    or aligned in any way. Since the structure only contains unsigned
    chars, it _might_ be unpadded by default; I am not sure,
    however. */
-typedef struct __attribute__((__packed__)) {
-    uint8_t r;  /* red   */
-    uint8_t g;  /* green */
-    uint8_t b;  /* blue  */
+typedef struct __attribute__((__packed__))
+{
+    uint8_t r; /* red   */
+    uint8_t g; /* green */
+    uint8_t b; /* blue  */
 } pixel_t;
 
 /* forward declarations */
 vec3_t trace(ray_t ray, int depth);
 vec3_t shade(sphere_t *obj, spoint_t *sp, int depth);
 
-#define MAX_LIGHTS	16		/* maximum number of lights     */
-const double RAY_MAG = 1000.0;		/* trace rays of this magnitude */
-const int MAX_RAY_DEPTH	= 5;		/* raytrace recursion limit     */
-const double ERR_MARGIN	= 1e-6;		/* an arbitrary error margin to avoid surface acne */
+#define MAX_LIGHTS 16                   /* maximum number of lights     */
+const double RAY_MAG = 1000.0;          /* trace rays of this magnitude */
+const int MAX_RAY_DEPTH = 5;            /* raytrace recursion limit     */
+const double ERR_MARGIN = 1e-6;         /* an arbitrary error margin to avoid surface acne */
 const double DEG_TO_RAD = M_PI / 180.0; /* convert degrees to radians   */
 
 /* global state */
 int xres = 800;
-int yres = 600;
+int yres = 800;
 double aspect;
 sphere_t *obj_list = NULL;
 vec3_t lights[MAX_LIGHTS];
-int lnum = 0; /* number of lights */
+int lnum = 1; /* number of lights */
 camera_t cam;
 
-#define NRAN	1024
-#define MASK	(NRAN - 1)
+#define NRAN 1024
+#define MASK (NRAN - 1)
 vec3_t urand[NRAN];
 int irand[NRAN];
 
@@ -211,9 +218,7 @@ const char *usage = {
     "  -r <rays>  shoot <rays> rays per pixel (antialiasing, default 1)\n"
     "  -i <file>  read from <file> instead of stdin\n"
     "  -o <file>  write to <file> instead of stdout\n"
-    "  -h         this help screen\n\n"
-};
-
+    "  -h         this help screen\n\n"};
 
 /* vector dot product */
 double dot(vec3_t a, vec3_t b)
@@ -224,7 +229,7 @@ double dot(vec3_t a, vec3_t b)
 /* square of x */
 double sq(double x)
 {
-    return x*x;
+    return x * x;
 }
 
 vec3_t normalize(vec3_t v)
@@ -248,7 +253,6 @@ vec3_t reflect(vec3_t v, vec3_t n)
     return res;
 }
 
-
 vec3_t cross_product(vec3_t v1, vec3_t v2)
 {
     vec3_t res;
@@ -257,7 +261,6 @@ vec3_t cross_product(vec3_t v1, vec3_t v2)
     res.z = v1.x * v2.y - v1.y * v2.x;
     return res;
 }
-
 
 /* jitter function taken from Graphics Gems I. */
 vec3_t jitter(int x, int y, int s)
@@ -295,9 +298,12 @@ int ray_sphere(const sphere_t *sph, ray_t ray, spoint_t *sp)
     if ((t1 < ERR_MARGIN && t2 < ERR_MARGIN) || (t1 > 1.0 && t2 > 1.0))
         return 0;
 
-    if (sp) {
-        if (t1 < ERR_MARGIN) t1 = t2;
-        if (t2 < ERR_MARGIN) t2 = t1;
+    if (sp)
+    {
+        if (t1 < ERR_MARGIN)
+            t1 = t2;
+        if (t2 < ERR_MARGIN)
+            t2 = t1;
         sp->dist = t1 < t2 ? t1 : t2;
 
         sp->pos.x = ray.orig.x + ray.dir.x * sp->dist;
@@ -314,27 +320,27 @@ int ray_sphere(const sphere_t *sph, ray_t ray, spoint_t *sp)
     return 1;
 }
 
-
 vec3_t get_sample_pos(int x, int y, int sample)
 {
     vec3_t pt;
     static double sf = 0.0;
 
-    if (sf == 0.0) {
+    if (sf == 0.0)
+    {
         sf = 2.0 / (double)xres;
     }
 
     pt.x = ((double)x / (double)xres) - 0.5;
     pt.y = -(((double)y / (double)yres) - 0.65) / aspect;
 
-    if (sample) {
+    if (sample)
+    {
         vec3_t jt = jitter(x, y, sample);
         pt.x += jt.x * sf;
         pt.y += jt.y * sf / aspect;
     }
     return pt;
 }
-
 
 /* determine the primary ray corresponding to the specified pixel (x, y) */
 ray_t get_primary_ray(int x, int y, int sample)
@@ -350,9 +356,15 @@ ray_t get_primary_ray(int x, int y, int sample)
 
     i = cross_product(j, k);
     j = cross_product(k, i);
-    m[0][0] = i.x; m[0][1] = j.x; m[0][2] = k.x;
-    m[1][0] = i.y; m[1][1] = j.y; m[1][2] = k.y;
-    m[2][0] = i.z; m[2][1] = j.z; m[2][2] = k.z;
+    m[0][0] = i.x;
+    m[0][1] = j.x;
+    m[0][2] = k.x;
+    m[1][0] = i.y;
+    m[1][1] = j.y;
+    m[1][2] = k.y;
+    m[2][0] = i.z;
+    m[2][1] = j.z;
+    m[2][2] = k.z;
 
     ray.orig.x = ray.orig.y = ray.orig.z = 0.0;
     ray.dir = get_sample_pos(x, y, sample);
@@ -380,7 +392,6 @@ ray_t get_primary_ray(int x, int y, int sample)
     return ray;
 }
 
-
 /*
  * Compute direct illumination with the phong reflectance model.  Also
  * handles reflections by calling trace again, if necessary.
@@ -391,7 +402,8 @@ vec3_t shade(sphere_t *obj, spoint_t *sp, int depth)
     vec3_t col = {0, 0, 0};
 
     /* for all lights ... */
-    for (i=0; i<lnum; i++) {
+    for (i = 0; i < lnum; i++)
+    {
         double ispec, idiff;
         vec3_t ldir;
         ray_t shadow_ray;
@@ -409,13 +421,15 @@ vec3_t shade(sphere_t *obj, spoint_t *sp, int depth)
            with the light */
         for (iter = obj_list;
              (iter != NULL) && !ray_sphere(iter, shadow_ray, 0);
-             iter = iter->next) {
+             iter = iter->next)
+        {
             /* empty body */
         }
         in_shadow = (iter != NULL);
         /* and if we're not in shadow, calculate direct illumination
            with the phong model. */
-        if (!in_shadow) {
+        if (!in_shadow)
+        {
             ldir = normalize(ldir);
 
             idiff = fmax(dot(sp->normal, ldir), 0.0);
@@ -430,7 +444,8 @@ vec3_t shade(sphere_t *obj, spoint_t *sp, int depth)
     /* Also, if the object is reflective, spawn a reflection ray, and
        call trace() to calculate the light arriving from the mirror
        direction. */
-    if (obj->mat.refl > 0.0) {
+    if (obj->mat.refl > 0.0)
+    {
         ray_t ray;
         vec3_t rcol;
 
@@ -449,7 +464,6 @@ vec3_t shade(sphere_t *obj, spoint_t *sp, int depth)
     return col;
 }
 
-
 /*
  * trace a ray throught the scene recursively (the recursion happens
  * through shade() to calculate reflection rays if necessary).
@@ -464,48 +478,57 @@ vec3_t trace(ray_t ray, int depth)
     nearest_sp.dist = INFINITY;
 
     /* if we reached the recursion limit, bail out */
-    if (depth >= MAX_RAY_DEPTH) {
+    if (depth >= MAX_RAY_DEPTH)
+    {
         col.x = col.y = col.z = 0.0;
         return col;
     }
 
     /* find the nearest intersection ... */
-    for (iter = obj_list; iter != NULL; iter = iter->next ) {
-        if ( ray_sphere(iter, ray, &sp) &&
-             (!nearest_obj || sp.dist < nearest_sp.dist) ) {
+    for (iter = obj_list; iter != NULL; iter = iter->next)
+    {
+        if (ray_sphere(iter, ray, &sp) &&
+            (!nearest_obj || sp.dist < nearest_sp.dist))
+        {
             nearest_obj = iter;
             nearest_sp = sp;
         }
     }
 
     /* and perform shading calculations as needed by calling shade() */
-    if (nearest_obj != NULL) {
+    if (nearest_obj != NULL)
+    {
         col = shade(nearest_obj, &nearest_sp, depth);
-    } else {
+    }
+    else
+    {
         col.x = col.y = col.z = 0.0;
     }
 
     return col;
 }
 
-
 /* render a frame of xsz/ysz dimensions into the provided framebuffer */
 void render(int xsz, int ysz, pixel_t *fb, int samples)
 {
     int i, j;
 
-    /*
-     * for each subpixel, trace a ray through the scene, accumulate
-     * the colors of the subpixels of each pixel, then put the colors
-     * into the framebuffer.
-     */
-    for (j=0; j<ysz; j++) {
-        for (i=0; i<xsz; i++) {
+/*
+ * for each subpixel, trace a ray through the scene, accumulate
+ * the colors of the subpixels of each pixel, then put the colors
+ * into the framebuffer.
+ */
+#pragma omp parallel for collapse(2) default(none) shared(xsz, ysz, fb, samples) schedule(dynamic, 32)
+    for (j = 0; j < ysz; j++)
+    {
+        for (i = 0; i < xsz; i++)
+        {
             double r, g, b;
             int s;
             r = g = b = 0.0;
 
-            for (s=0; s<samples; s++) {
+            for (s = 0; s < samples; s++)
+            {
                 vec3_t col = trace(get_primary_ray(i, j, s), 0);
                 r += col.x;
                 g += col.y;
@@ -516,9 +539,9 @@ void render(int xsz, int ysz, pixel_t *fb, int samples)
             g /= samples;
             b /= samples;
 
-            fb[j*xsz+i].r = (uint8_t)(fmin(r, 1.0) * 255.0);
-            fb[j*xsz+i].g = (uint8_t)(fmin(g, 1.0) * 255.0);
-            fb[j*xsz+i].b = (uint8_t)(fmin(b, 1.0) * 255.0);
+            fb[j * xsz + i].r = (uint8_t)(fmin(r, 1.0) * 255.0);
+            fb[j * xsz + i].g = (uint8_t)(fmin(g, 1.0) * 255.0);
+            fb[j * xsz + i].b = (uint8_t)(fmin(b, 1.0) * 255.0);
         }
     }
 }
@@ -535,7 +558,8 @@ void load_scene(FILE *fp)
     cam.half_fov_rad = 45 * DEG_TO_RAD * 0.5;
     cam.targ.x = cam.targ.y = cam.targ.z = 0.0;
 
-    while ((ptr = fgets(line, sizeof(line), fp))) {
+    while ((ptr = fgets(line, sizeof(line), fp)))
+    {
         int nread;
         sphere_t *sph;
         char type;
@@ -549,9 +573,11 @@ void load_scene(FILE *fp)
         type = *ptr;
         ptr++;
 
-        switch (type) {
+        switch (type)
+        {
         case 's': /* sphere */
-            sph = malloc(sizeof *sph); assert(sph != NULL);
+            sph = malloc(sizeof *sph);
+            assert(sph != NULL);
             sph->next = obj_list;
             obj_list = sph;
 
@@ -563,7 +589,8 @@ void load_scene(FILE *fp)
             assert(9 == nread);
             break;
         case 'l': /* light */
-            if (lnum >= MAX_LIGHTS) {
+            if (lnum >= MAX_LIGHTS)
+            {
                 fprintf(stderr, "FATAL: too many lights\n");
                 exit(-1);
             }
@@ -589,11 +616,11 @@ void load_scene(FILE *fp)
     }
 }
 
-
 /* Relinquish all memory used by the linked list of spheres */
-void free_scene( void )
+void free_scene(void)
 {
-    while (obj_list != NULL) {
+    while (obj_list != NULL)
+    {
         sphere_t *next = obj_list->next;
         free(obj_list);
         obj_list = next;
@@ -610,26 +637,33 @@ int main(int argc, char *argv[])
     int opt;
     char *sep;
 
-    while ((opt = getopt(argc, argv, "s:i:o:r:h")) != -1) {
-        switch (opt) {
+    while ((opt = getopt(argc, argv, "s:i:o:r:h")) != -1)
+    {
+        switch (opt)
+        {
         case 's':
-            if (!isdigit(optarg[0]) || !(sep = strchr(optarg, 'x')) || !isdigit(*(sep + 1))) {
+            if (!isdigit(optarg[0]) || !(sep = strchr(optarg, 'x')) || !isdigit(*(sep + 1)))
+            {
                 fprintf(stderr, "FATAL: -s must be followed by something like \"640x480\"\n");
                 return EXIT_FAILURE;
             }
-            xres = atoi(optarg); assert(xres > 0);
-            yres = atoi(sep + 1); assert(yres > 0);
+            xres = atoi(optarg);
+            assert(xres > 0);
+            yres = atoi(sep + 1);
+            assert(yres > 0);
             break;
 
         case 'i':
-            if ((infile = fopen(optarg, "r")) == NULL) {
+            if ((infile = fopen(optarg, "r")) == NULL)
+            {
                 fprintf(stderr, "FATAL: failed to open input file %s: %s\n", optarg, strerror(errno));
                 return EXIT_FAILURE;
             }
             break;
 
         case 'o':
-            if ((outfile = fopen(optarg, "w")) == NULL) {
+            if ((outfile = fopen(optarg, "w")) == NULL)
+            {
                 fprintf(stderr, "FATAL: failed to open output file %s: %s\n", optarg, strerror(errno));
                 return EXIT_FAILURE;
             }
@@ -637,7 +671,8 @@ int main(int argc, char *argv[])
 
         case 'r':
             rays_per_pixel = atoi(optarg);
-            if (rays_per_pixel < 0 || rays_per_pixel > NRAN) {
+            if (rays_per_pixel < 0 || rays_per_pixel > NRAN)
+            {
                 fprintf(stderr, "FATAL: the number of rays must be in 0-%d\n", NRAN);
                 return EXIT_FAILURE;
             }
@@ -655,16 +690,20 @@ int main(int argc, char *argv[])
 
     aspect = (double)xres / (double)yres;
 
-    if ((pixels = malloc(xres * yres * sizeof(*pixels))) == NULL) {
+    if ((pixels = malloc(xres * yres * sizeof(*pixels))) == NULL)
+    {
         fprintf(stderr, "FATAL: pixel buffer allocation failed");
         return EXIT_FAILURE;
     }
     load_scene(infile);
 
     /* initialize the random number tables for the jitter */
-    for (i=0; i<NRAN; i++) urand[i].x = (double)rand() / RAND_MAX - 0.5;
-    for (i=0; i<NRAN; i++) urand[i].y = (double)rand() / RAND_MAX - 0.5;
-    for (i=0; i<NRAN; i++) irand[i] = (int)(NRAN * ((double)rand() / RAND_MAX));
+    for (i = 0; i < NRAN; i++)
+        urand[i].x = (double)rand() / RAND_MAX - 0.5;
+    for (i = 0; i < NRAN; i++)
+        urand[i].y = (double)rand() / RAND_MAX - 0.5;
+    for (i = 0; i < NRAN; i++)
+        irand[i] = (int)(NRAN * ((double)rand() / RAND_MAX));
 
     tstart = omp_get_wtime();
     render(xres, yres, pixels, rays_per_pixel);
@@ -675,13 +714,15 @@ int main(int argc, char *argv[])
 
     /* output the image */
     fprintf(outfile, "P6\n%d %d\n255\n", xres, yres);
-    fwrite(pixels, sizeof(*pixels), xres*yres, outfile);
+    fwrite(pixels, sizeof(*pixels), xres * yres, outfile);
     fflush(outfile);
 
     free(pixels);
-    free_scene( );
+    free_scene();
 
-    if (infile != stdin) fclose(infile);
-    if (outfile != stdout) fclose(outfile);
+    if (infile != stdin)
+        fclose(infile);
+    if (outfile != stdout)
+        fclose(outfile);
     return EXIT_SUCCESS;
 }
