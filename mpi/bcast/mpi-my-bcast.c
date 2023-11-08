@@ -95,11 +95,24 @@ void my_Bcast(int *v)
 
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
-    /* [TODO] */
+    if (my_rank > 0)
+    {
+        MPI_Recv(v,
+                 1,
+                 MPI_INT,
+                 (my_rank - 1) / 2,
+                 0,
+                 MPI_COMM_WORLD,
+                 MPI_STATUS_IGNORE);
+    }
+    const int db_rk = my_rank * 2;
+    const int d1 = ((db_rk + 1) < comm_sz ? db_rk + 1 : MPI_PROC_NULL);
+    const int d2 = ((db_rk + 2) < comm_sz ? db_rk + 2 : MPI_PROC_NULL);
+    MPI_Send(v, 1, MPI_INT, d1, 0, MPI_COMM_WORLD);
+    MPI_Send(v, 1, MPI_INT, d2, 0, MPI_COMM_WORLD);
 }
 
-
-int main( int argc, char *argv[] )
+int main(int argc, char *argv[])
 {
     const int SENDVAL = 999; /* valore che viene inviato agli altri processi */
     int my_rank;
@@ -108,9 +121,12 @@ int main( int argc, char *argv[] )
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
-    if ( 0 == my_rank ) {
+    if (0 == my_rank)
+    {
         v = SENDVAL; /* only process 0 sets the value to be sent */
-    } else {
+    }
+    else
+    {
         v = -1; /* all other processes set v to -1; if everything goes well, the value will be overwritten with the value received from the master */
     }
 
@@ -118,9 +134,12 @@ int main( int argc, char *argv[] )
 
     my_Bcast(&v);
 
-    if ( v == 999 ) {
+    if (v == 999)
+    {
         printf("OK: ");
-    } else {
+    }
+    else
+    {
         printf("ERROR: ");
     }
     printf("Process %d received %d\n", my_rank, v);
