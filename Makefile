@@ -1,4 +1,7 @@
 SHELL=/bin/bash
+
+CPUCOUNT := $(shell grep -c "^processor" /proc/cpuinfo)
+
 CC = gcc
 MPICC = mpicc
 CFLAGS = --std=c99 -Wall -Wpedantic
@@ -10,7 +13,13 @@ MPI_SRC := $(wildcard mpi/*/*.c)
 OMP_BIN := $(patsubst %.c,%,$(OMP_SRC))
 MPI_BIN := $(patsubst %.c,%,$(MPI_SRC))
 
-all: omp mpi
+.PHONY: all all_ clean
+
+all: 
+	@echo "Running: $(CPUCOUNT) jobs"
+	$(MAKE) -j$(CPUCOUNT) all_
+
+all_: omp mpi
 
 omp: $(OMP_BIN)
 

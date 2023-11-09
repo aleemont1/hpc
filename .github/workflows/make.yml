@@ -17,7 +17,5 @@ jobs:
       - uses: actions/checkout@v3
       - uses: mpi4py/setup-mpi@v1
 
-      - name: make omp
-        run: make omp
-      - name: make mpi
-        run: make mpi
+      - name: make
+        run: make
