@@ -5,6 +5,7 @@
 !*.cpp
 !*.hcc
 !*.in
+!Makefile
 !LICENSE
 !README*
 
