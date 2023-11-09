@@ -2,20 +2,22 @@ name: HPC Workflow
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: mpi4py/setup-mpi@v1
+      - uses: actions/checkout@v3
+      - uses: mpi4py/setup-mpi@v1
 
-    - name: make omp
-      run: make omp
-    - name: make mpi
-      run: make mpi
+      - name: make omp
+        run: make omp
+      - name: make mpi
+        run: make mpi
