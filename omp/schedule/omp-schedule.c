@@ -233,7 +233,7 @@ void do_dynamic(const int *vin, int *vout, int n)
 #pragma omp parallel default(none) shared(vin, vout, n, idx, chunk_size) private(i)
     {
         int my_idx;
-        const int tid = omp_get_thread_num();
+        // const int tid = omp_get_thread_num();
         do
         {
 #pragma omp critical

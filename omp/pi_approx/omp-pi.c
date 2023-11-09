@@ -125,12 +125,11 @@ OpenMP threads and $N=20000$ points:
    centered ad the origin with radius 1. */
 unsigned int generate_points(unsigned int n)
 {
-    const int NUM_THR = omp_get_num_threads();
     /* [TODO] parallelize the body of this function */
     unsigned int n_inside = 0;
     //unsigned int inside[NUM_THR];
 
-#pragma omp parallel default(none) shared(n, NUM_THR, n_inside)
+#pragma omp parallel default(none) shared(n, n_inside)
     {
         /* The C function rand() is _NOT_ thread-safe, since it uses a
            global (shared) seed. Therefore, it can not be used inside an
