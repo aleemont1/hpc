@@ -1,0 +1,21 @@
+name: HPC Workflow
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: mpi4py/setup-mpi@v1
+
+    - name: make omp
+      run: make omp
+    - name: make mpi
+      run: make mpi
