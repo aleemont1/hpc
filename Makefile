@@ -15,19 +15,35 @@ MPI_BIN := $(patsubst %.c,%,$(MPI_SRC))
 
 .PHONY: all all_ clean
 
-all: 
+#default: single job run
+all: omp mpi
+
+#multi-job run
+multi: 
 	@echo "Running: $(CPUCOUNT) jobs"
-	$(MAKE) -j$(CPUCOUNT) all_
+	$(MAKE) -j$(CPUCOUNT) all
 
-all_: omp mpi
+#omp compilation (multiple jobs)
+omp_:
+	@echo "Running: $(CPUCOUNT) jobs for omp"
+	$(MAKE) -j$(CPUCOUNT) omp
 
+#omp compilation (single job)
 omp: $(OMP_BIN)
 
+#mpi compilation (multiple jobs)
+mpi_:
+	@echo "Running: $(CPUCOUNT) jobs for mpi"
+	$(MAKE) -j$(CPUCOUNT) mpi
+
+#mpi compilation (single job)
 mpi: $(MPI_BIN)
 
+#compile omp files
 omp/%: omp/%.c
 	$(CC) $(CFLAGS) -fopenmp $< -o $@ -lm
 
+#compile mpi files
 mpi/%: mpi/%.c
 	$(MPICC) $(CFLAGS) $< -o $@
 
