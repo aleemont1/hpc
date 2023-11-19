@@ -13,28 +13,21 @@ MPI_SRC := $(wildcard mpi/*/*.c)
 OMP_BIN := $(patsubst %.c,%,$(OMP_SRC))
 MPI_BIN := $(patsubst %.c,%,$(MPI_SRC))
 
-.PHONY: all all_ clean
+.PHONY: all multi clean
 
 #default: single job run
 all: omp mpi
 
 #multi-job run
-multi: 
-	@echo "Running: $(CPUCOUNT) jobs"
-	$(MAKE) -j$(CPUCOUNT) all
+multi: omp_ mpi_
 
 #omp compilation (multiple jobs)
-omp_:
-	@echo "Running: $(CPUCOUNT) jobs for omp"
-	$(MAKE) -j$(CPUCOUNT) omp
+%_:
+	@echo "Running: $(CPUCOUNT) jobs for $*"
+	$(MAKE) -j$(CPUCOUNT) $*
 
 #omp compilation (single job)
 omp: $(OMP_BIN)
-
-#mpi compilation (multiple jobs)
-mpi_:
-	@echo "Running: $(CPUCOUNT) jobs for mpi"
-	$(MAKE) -j$(CPUCOUNT) mpi
 
 #mpi compilation (single job)
 mpi: $(MPI_BIN)
