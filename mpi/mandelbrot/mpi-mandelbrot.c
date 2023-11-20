@@ -98,10 +98,11 @@ const int MAXIT = 100;
 /* The __attribute__(( ... )) definition is gcc-specific, and tells
    the compiler that the fields of this structure should not be padded
    or aligned in any way. */
-typedef struct __attribute__((__packed__)) {
-    uint8_t r;  /* red   */
-    uint8_t g;  /* green */
-    uint8_t b;  /* blue  */
+typedef struct __attribute__((__packed__))
+{
+    uint8_t r; /* red   */
+    uint8_t g; /* green */
+    uint8_t b; /* blue  */
 } pixel_t;
 
 /* color gradient from https://stackoverflow.com/questions/16500656/which-color-gradient-is-used-to-color-mandelbrot-in-wikipedia */
@@ -121,8 +122,8 @@ const pixel_t colors[] = {
     {255, 170, 0},
     {204, 128, 0},
     {153, 87, 0},
-    {106, 52, 3} };
-const int NCOLORS = sizeof(colors)/sizeof(colors[0]);
+    {106, 52, 3}};
+const int NCOLORS = sizeof(colors) / sizeof(colors[0]);
 
 /*
  * Iterate the recurrence:
@@ -133,13 +134,14 @@ const int NCOLORS = sizeof(colors)/sizeof(colors[0]);
  * Returns the first `n` such that `z_n > bound`, or `MAXIT` if `z_n` is below
  * `bound` after `MAXIT` iterations.
  */
-int iterate( float cx, float cy )
+int iterate(float cx, float cy)
 {
     float x = 0.0f, y = 0.0f, xnew, ynew;
     int it;
-    for ( it = 0; (it < MAXIT) && (x*x + y*y <= 2.0*2.0); it++ ) {
-        xnew = x*x - y*y + cx;
-        ynew = 2.0*x*y + cy;
+    for (it = 0; (it < MAXIT) && (x * x + y * y <= 2.0 * 2.0); it++)
+    {
+        xnew = x * x - y * y + cx;
+        ynew = 2.0 * x * y + cy;
         x = xnew;
         y = ynew;
     }
@@ -152,19 +154,24 @@ int iterate( float cx, float cy )
    image will be stored; in other words, this function writes to
    pixels p[0], p[1], ... `xsize` and `ysize` MUST be the sizes
    of the WHOLE image. */
-void draw_lines( int ystart, int yend, pixel_t* p, int xsize, int ysize )
+void draw_lines(int ystart, int yend, pixel_t *p, int xsize, int ysize)
 {
     int x, y;
-    for ( y = ystart; y < yend; y++) {
-        for ( x = 0; x < xsize; x++ ) {
+    for (y = ystart; y < yend; y++)
+    {
+        for (x = 0; x < xsize; x++)
+        {
             const float cx = -2.5 + 3.5 * (float)x / (xsize - 1);
             const float cy = 1 - 2.0 * (float)y / (ysize - 1);
             const int v = iterate(cx, cy);
-            if (v < MAXIT) {
+            if (v < MAXIT)
+            {
                 p->r = colors[v % NCOLORS].r;
                 p->g = colors[v % NCOLORS].g;
                 p->b = colors[v % NCOLORS].b;
-            } else {
+            }
+            else
+            {
                 p->r = p->g = p->b = 0;
             }
             p++;
@@ -172,11 +179,11 @@ void draw_lines( int ystart, int yend, pixel_t* p, int xsize, int ysize )
     }
 }
 
-int main( int argc, char *argv[] )
+int main(int argc, char *argv[])
 {
     int my_rank, comm_sz;
     FILE *out = NULL;
-    const char* fname="mpi-mandelbrot.ppm";
+    const char *fname = "mpi-mandelbrot.ppm";
     pixel_t *bitmap = NULL;
     int xsize, ysize;
 
@@ -184,18 +191,23 @@ int main( int argc, char *argv[] )
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
 
-    if ( argc > 1 ) {
+    if (argc > 1)
+    {
         ysize = atoi(argv[1]);
-    } else {
+    }
+    else
+    {
         ysize = 1024;
     }
 
     xsize = ysize * 1.4;
 
     /* xsize and ysize are known to all processes */
-    if ( 0 == my_rank ) {
+    if (0 == my_rank)
+    {
         out = fopen(fname, "w");
-        if ( !out ) {
+        if (!out)
+        {
             fprintf(stderr, "Error: cannot create %s\n", fname);
             MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         }
@@ -206,17 +218,48 @@ int main( int argc, char *argv[] )
         fprintf(out, "255\n");
 
         /* Allocate the complete bitmap */
-        bitmap = (pixel_t*)malloc(xsize*ysize*sizeof(*bitmap));
+        bitmap = (pixel_t *)malloc(xsize * ysize * sizeof(*bitmap));
         assert(bitmap != NULL);
-        /* [TODO] This is not a true parallel version, since the master
-           does everything */
-        draw_lines(0, ysize, bitmap, xsize, ysize);
-        fwrite(bitmap, sizeof(*bitmap), xsize*ysize, out);
-        fclose(out);
-        free(bitmap);
     }
+    /* [TODO] This is not a true parallel version, since the master
+       does everything */
+    const int local_ysize = ysize / comm_sz;      /* number of rows per process */
+    const int ystart = my_rank * local_ysize;     /* first row of the process */
+    const int yend = local_ysize * (my_rank + 1); /* last row of the process */
+    pixel_t *local_bitmap = (pixel_t *)malloc(xsize * local_ysize * sizeof(*local_bitmap));
+    assert(local_bitmap != NULL);
 
+    const double tstart = MPI_Wtime();
 
+    draw_lines(ystart, yend, local_bitmap, xsize, ysize);
+
+    MPI_Gather(
+        local_bitmap,
+        xsize * local_ysize * 3,
+        MPI_BYTE,
+        bitmap,
+        xsize * local_ysize * 3,
+        MPI_BYTE,
+        0,
+        MPI_COMM_WORLD);
+
+    if (0 == my_rank)
+    {
+        /* process 0 takes care of the last rows */
+        if (ysize % comm_sz)
+        {
+            int skip_rows = local_ysize * comm_sz; /* number of rows already processed */
+            draw_lines(skip_rows, ysize, &bitmap[skip_rows * xsize], xsize, ysize);
+        }
+
+        const double elapsed = MPI_Wtime() - tstart;
+
+        fwrite(bitmap, sizeof(*bitmap), xsize * ysize, out);
+        fclose(out);
+        printf("Elapsed time: %f\n", elapsed);
+    }
+    free(local_bitmap);
+    free(bitmap);
     MPI_Finalize();
 
     return EXIT_SUCCESS;
