@@ -2,8 +2,8 @@ SHELL=/bin/bash
 
 CPUCOUNT := $(shell grep -c "^processor" /proc/cpuinfo)
 
-CC = gcc
-MPICC = mpicc
+CC ?= gcc
+MPICC ?= mpicc
 CFLAGS = --std=c99 -Wall -Wpedantic
 
 OMP_SRC := $(wildcard omp/*/*.c)
