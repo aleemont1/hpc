@@ -25,6 +25,6 @@ jobs:
           echo "MPICC=/usr/local/bin/mpicc" >> $GITHUB_ENV
 
       - name: make omp
-        run: make CC=${{ env.CC }} omp_
+        run: make omp_
       - name: make mpi
-        run: make MPICC=${{ env.MPICC }} mpi_
+        run: make mpi_
