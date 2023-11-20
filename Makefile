@@ -41,4 +41,4 @@ mpi/%: mpi/%.c
 	$(MPICC) $(CFLAGS) $< -o $@
 
 clean:
-	rm -f $(OMP_BIN) $(MPI_BIN) omp/raytracer/*{ppm,xmp}
+	rm -f $(OMP_BIN) $(MPI_BIN) */**/*{ppm,xmp,png}
