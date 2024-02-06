@@ -165,12 +165,59 @@ int main( int argc, char* argv[] )
     }
 
     const double tstart = MPI_Wtime();
-
-    /* [TODO] This is not a true parallel version: the master does
-       everything */
-    if ( 0 == my_rank ) {
-        c = inside(x, y, r, N, K);
+    MPI_Bcast(
+        &N,
+        1,
+        MPI_INT,
+        0,
+        MPI_COMM_WORLD
+    );
+    /* Allocazione degli array per gli altri processi */
+    if(my_rank > 0) {
+        x = (float*)malloc(N * sizeof(*x)); assert(x != NULL);
+        y = (float*)malloc(N * sizeof(*y)); assert(y != NULL);
+        r = (float*)malloc(N * sizeof(*r)); assert(r != NULL);
     }
+    /* Il processo master invia gli array agli altri processi */
+    MPI_Bcast(
+        x,
+        N,
+        MPI_FLOAT,
+        0,
+        MPI_COMM_WORLD
+    );
+    MPI_Bcast(
+        y,
+        N,
+        MPI_FLOAT,
+        0,
+        MPI_COMM_WORLD
+    );
+    MPI_Bcast(
+        r,
+        N,
+        MPI_FLOAT,
+        0,
+        MPI_COMM_WORLD
+    );
+
+    int local_K = K / comm_sz;
+
+    if ( 0 == my_rank ) {
+        local_K += K % comm_sz; /* Il processo master gestisce anche i cerchi restanti */
+    }
+
+    int local_c = inside(x, y, r, N, local_K);
+
+    MPI_Reduce(
+        &local_c,
+        &c,
+        1,
+        MPI_INT,
+        MPI_SUM,
+        0,
+        MPI_COMM_WORLD
+    );
 
     /* the master prints the result */
     if ( 0 == my_rank ) {
