@@ -223,43 +223,32 @@ int main(int argc, char *argv[])
     }
     /* [TODO] This is not a true parallel version, since the master
        does everything */
-    const int local_ysize = ysize / comm_sz;      /* number of rows per process */
-    const int ystart = my_rank * local_ysize;     /* first row of the process */
-    const int yend = local_ysize * (my_rank + 1); /* last row of the process */
-    pixel_t *local_bitmap = (pixel_t *)malloc(xsize * local_ysize * sizeof(*local_bitmap));
-    assert(local_bitmap != NULL);
-
+    const int my_ysize = ysize / comm_sz;
+    const int ystart = my_ysize * my_rank;
+    const int yend = my_ysize * (my_rank + 1); /* Stops before the ystart of the next process */
+    pixel_t *my_bitmap = (pixel_t *)malloc(xsize * my_ysize * sizeof(*my_bitmap));
     const double tstart = MPI_Wtime();
-
-    draw_lines(ystart, yend, local_bitmap, xsize, ysize);
-
+    draw_lines(ystart, yend, my_bitmap, xsize, ysize);
     MPI_Gather(
-        local_bitmap,
-        xsize * local_ysize * 3,
+        my_bitmap,
+        xsize * my_ysize * 3,
         MPI_BYTE,
         bitmap,
-        xsize * local_ysize * 3,
+        xsize * my_ysize * 3,
         MPI_BYTE,
         0,
         MPI_COMM_WORLD);
-
     if (0 == my_rank)
     {
-        /* process 0 takes care of the last rows */
-        if (ysize % comm_sz)
-        {
-            int skip_rows = local_ysize * comm_sz; /* number of rows already processed */
-            draw_lines(skip_rows, ysize, &bitmap[skip_rows * xsize], xsize, ysize);
-        }
-
-        const double elapsed = MPI_Wtime() - tstart;
-
+        const int skip = comm_sz * my_ysize;
+        draw_lines(skip, ysize, &bitmap[skip * xsize], xsize, ysize);
         fwrite(bitmap, sizeof(*bitmap), xsize * ysize, out);
         fclose(out);
-        printf("Elapsed time: %f\n", elapsed);
+        printf("Elapsed time: %f\n", MPI_Wtime() - tstart);
     }
-    free(local_bitmap);
     free(bitmap);
+    free(my_bitmap);
+
     MPI_Finalize();
 
     return EXIT_SUCCESS;

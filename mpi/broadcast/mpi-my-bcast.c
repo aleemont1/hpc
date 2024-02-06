@@ -21,7 +21,7 @@
 /***
 % HPC - Broadcast using point-to-point communication
 % Moreno Marzolla <moreno.marzolla@unibo.it>
-% Last updated: 2022-10-24
+% Last updated: 2023-11-09
 
 The purpose of this exercise is to implement the function
 
@@ -42,11 +42,11 @@ MPI_Bcast(v,             \/\* buffer   \*\/
 
 > **Note**. `MPI_Bcast()` must always be preferred to any home-made
 > solution. The purpose of this exercise is to learn how `MPI_Bcast()`
-> might be implemented, although the actual implementations are
+> might be implemented, although the actual implementation is
 > architecture-dependent.
 
 To implement `my_Bcast()`, each process determines its own rank $p$
-and the number $P$ of active MPI processes.
+and the number $P$ of MPI processes.
 
 Then, process 0:
 
@@ -60,10 +60,10 @@ Any other process $p>0$:
 - sends `*v` to processes $(2p + 1)$ and $(2p + 2)$, provided that
   they exist.
 
-For example, with $P = 15$ you get the communication scheme
-illustrated in Figure 1; arrows indicate point-to-point
-communications, numbers indicate the rank of processes. The procedure
-described above works correctly for any $P$.
+For example, with $P = 15$ you get the communication pattern shown in
+Figure 1; arrows indicate point-to-point communications, numbers
+indicate the rank of processes. The procedure above should work
+correctly for any $P$.
 
 ![Figure 1: Broadcast communication with $P = 15$ processes](mpi-my-bcast.svg)
 
@@ -97,19 +97,34 @@ void my_Bcast(int *v)
     MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
     if (my_rank > 0)
     {
-        MPI_Recv(v,
-                 1,
-                 MPI_INT,
-                 (my_rank - 1) / 2,
-                 0,
-                 MPI_COMM_WORLD,
-                 MPI_STATUS_IGNORE);
+        MPI_Recv(
+            v,
+            1,
+            MPI_INT,
+            (my_rank - 1) / 2,
+            MPI_ANY_TAG,
+            MPI_COMM_WORLD,
+            MPI_STATUS_IGNORE);
     }
-    const int db_rk = my_rank * 2;
-    const int d1 = ((db_rk + 1) < comm_sz ? db_rk + 1 : MPI_PROC_NULL);
-    const int d2 = ((db_rk + 2) < comm_sz ? db_rk + 2 : MPI_PROC_NULL);
-    MPI_Send(v, 1, MPI_INT, d1, 0, MPI_COMM_WORLD);
-    MPI_Send(v, 1, MPI_INT, d2, 0, MPI_COMM_WORLD);
+    const int dest_1 = 2 * my_rank + 1 < comm_sz ? 2 * my_rank + 1 : MPI_PROC_NULL;
+    const int dest_2 = 2 * my_rank + 2 < comm_sz ? 2 * my_rank + 2 : MPI_PROC_NULL;
+    /* send v to 2p+1 and 2p+2 */
+
+    MPI_Send(
+        v,
+        1,
+        MPI_INT,
+        dest_1,
+        0,
+        MPI_COMM_WORLD);
+
+    MPI_Send(
+        v,
+        1,
+        MPI_INT,
+        dest_2,
+        0,
+        MPI_COMM_WORLD);
 }
 
 int main(int argc, char *argv[])
@@ -121,19 +136,19 @@ int main(int argc, char *argv[])
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
+    /* process 0 sets `v` to the value to be broadcast, while all
+       other processes set `v` to -1. */
     if (0 == my_rank)
     {
-        v = SENDVAL; /* only process 0 sets the value to be sent */
+        v = SENDVAL;
     }
     else
     {
-        v = -1; /* all other processes set v to -1; if everything goes well, the value will be overwritten with the value received from the master */
+        v = -1;
     }
 
-    printf("Sending %d\n", SENDVAL);
-
+    printf("BEFORE: value of `v` at rank %d = %d\n", my_rank, v);
     my_Bcast(&v);
-
     if (v == 999)
     {
         printf("OK: ");
@@ -142,7 +157,7 @@ int main(int argc, char *argv[])
     {
         printf("ERROR: ");
     }
-    printf("Process %d received %d\n", my_rank, v);
+    printf("value of `v` at rank %d = %d\n", my_rank, v);
 
     MPI_Finalize();
 
